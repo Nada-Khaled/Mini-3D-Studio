@@ -1,0 +1,70 @@
+#version 330 core
+
+// Ouput data
+out vec3 color;
+//read out values from vertex shader
+in vec3 normal_worldspace;
+in vec3 position_worldspace;
+
+in vec3 fragColor;
+in vec2 TexCoord;
+
+uniform float checkTextureOut;
+uniform float checkLightOut;
+
+uniform sampler2D myTextureSampler;
+uniform vec3 ambientLight;
+uniform vec3 diffuseLight;
+uniform vec3 specularLight;
+uniform vec3 LightPosition_worldspace;
+uniform vec3 EyePosition_worldspace;
+uniform vec2 data;
+
+void main()
+{
+	vec3 textureColor;
+
+	if (checkTextureOut == 0 && checkLightOut == 0)
+	{
+		color = fragColor;
+	}
+	if(checkTextureOut == 1)
+	{
+		color = texture(myTextureSampler, TexCoord).rgb;
+		textureColor=texture(myTextureSampler, TexCoord).rgb;
+	}
+	if(checkLightOut == 1)
+	{
+	
+		//Diffuse Light
+		vec3 lightvector=normalize(LightPosition_worldspace-position_worldspace);
+		float brightness=dot(lightvector,normal_worldspace);
+		vec3 diffuseLightFinal=clamp(vec3(brightness,brightness,brightness),0,1);
+		diffuseLightFinal = diffuseLight*clamp(diffuseLightFinal,0,1);
+
+		//SpecularLight
+		vec3 reflectedLightVector = reflect(-lightvector,normal_worldspace);
+		vec3 eyeDirectionVector = normalize(EyePosition_worldspace - position_worldspace);
+		float specularity = dot(reflectedLightVector,eyeDirectionVector);
+		float specularExponent = data.y;
+		specularity = pow(specularity,specularExponent);
+		vec3 specularLightFinal = vec3(specularity,specularity,specularity);
+		specularLightFinal = specularLight*clamp(specularLightFinal,0,1);
+
+		//
+		float dist = abs(distance(position_worldspace,LightPosition_worldspace));
+		float rad = data.x;
+		float att = 1 - (dist/rad);
+		if ( att < 0)
+			att = 0;
+	
+		if( checkTextureOut == 1)
+		{
+			color = textureColor*(ambientLight + (diffuseLight + specularLight)*att);
+		}
+		if(checkTextureOut != 1)
+		{
+			color = ambientLight + (diffuseLight + specularLight)*att;
+		}
+	}
+}
